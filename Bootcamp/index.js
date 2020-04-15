@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const fileupload = require("express-fileupload");
+const errorHandler = require("./middleware/error");
 
 const connectDB = require("./config/db");
 
@@ -35,6 +36,8 @@ app.use("/api/v1/auth", auth);
 app.use("/api/v1/users", users);
 app.use("/api/v1/category", category);
 app.use("/api/v1/course", course);
+
+app.use(errorHandler);
 
 // server side port
 const PORT = process.env.PORT || 5000;

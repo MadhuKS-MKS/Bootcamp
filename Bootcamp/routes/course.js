@@ -6,6 +6,7 @@ const {
   updateCourse,
   deleteCourse,
   CoursePhotoUpload,
+  CourseVideoUpload,
 } = require("../controllers/course");
 
 const Course = require("../models/Course");
@@ -18,13 +19,16 @@ const { protect, authorize } = require("../middleware/auth");
 router
   .route("/:courseId/photo")
   .put(protect, authorize("admin"), CoursePhotoUpload);
+router
+  .route("/:courseId/video")
+  .put(protect, authorize("admin"), CourseVideoUpload);
 
 router
   .route("/")
   .get(
     advancedResults(Course, {
-      path: "category",
-      select: "name",
+      path: "categoryId",
+      // select: "name",
     }),
     getCourses
   )

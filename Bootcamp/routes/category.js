@@ -7,7 +7,6 @@ const {
   getCategories,
   addCategory,
   deleteCategory,
-
   // updateSyllabus,
 } = require("../controllers/category");
 const { protect, authorize } = require("../middleware/auth");

@@ -20,7 +20,7 @@ exports.getCategory = asyncHandler(async (req, res, next) => {
 
   if (!category) {
     return next(
-      new ErrorResponse(`No course with the id of ${req.params.categoryId}`),
+      new ErrorResponse(`No category with the id of ${req.params.categoryId}`),
       404
     );
   }
@@ -43,14 +43,9 @@ exports.addCategory = asyncHandler(async (req, res, next) => {
     user: req.user.categoryId,
   });
 
-  // If the user is not an admin, they can only add one category
-  if (categorypublished && req.user.role !== "admin") {
-    return next(
-      new ErrorResponse(
-        `The user with ID ${req.user.id} has already published a bootcamp`,
-        400
-      )
-    );
+  //no multiple category with same name
+  if (req.body.name === categorypublished.name) {
+    return next(new ErrorResponse(`Category already exists `, 400));
   }
 
   const category = await Category.create(req.body);

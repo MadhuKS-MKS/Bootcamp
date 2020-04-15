@@ -13,9 +13,6 @@ exports.getCourses = asyncHandler(async (req, res, next) => {
   if (req.params.categoryId) {
     const courses = await Course.find({
       categoryid: req.params.categoryId,
-    }).populate({
-      path: "courseid",
-      populate: { path: "categoryid" },
     });
     return res.status(200).json({
       success: true,
@@ -33,26 +30,24 @@ exports.getCourses = asyncHandler(async (req, res, next) => {
 exports.getCourse = asyncHandler(async (req, res, next) => {
   const courses = await Course.findById(req.params.courseId);
   if (!courses.free) {
-    const course = await CourseFee.find({
-      courseid: req.params.courseId,
-    }).populate({
+    const course = await CourseFee.find({ courseid: courses.id }).populate({
       path: "courseid",
-      populate: { path: "categoryid" },
     });
     res.status(200).json({
       success: true,
       data: course,
     });
   } else {
-    // if (!course) {
-    //   return next(
-    //     new ErrorResponse(`No course with the id of ${req.params.courseId}`),
-    //     404
-    //   );
-    // // }
+    if (!courses) {
+      return next(
+        new ErrorResponse(`No course with the id of ${req.params.courseId}`),
+        404
+      );
+    }
+
     res.status(200).json({
-      success: true,
-      data: courses.free,
+      success: false,
+      data: courses,
     });
   }
 });
@@ -62,7 +57,8 @@ exports.getCourse = asyncHandler(async (req, res, next) => {
 // @access    Private
 exports.addCourse = asyncHandler(async (req, res, next) => {
   const amount = req.body.amount;
-  if (req.body.free === "false") {
+  req.body.user = req.user.id;
+  if (!req.body.free) {
     const course = {
       title: req.body.title,
       description: req.body.description,
@@ -70,14 +66,13 @@ exports.addCourse = asyncHandler(async (req, res, next) => {
       free: req.body.free,
       syllabus: req.body.syllabus,
       categoryid: req.params.categoryId,
+      user: req.body.user,
     };
     const courses = await Course.create(course);
 
-    const id = { _id: courses.id };
-    const fee = { amount: amount, courseid: id };
+    const fee = { amount: amount, courseid: courses.id };
     const courseFee = await CourseFee.create(fee);
-    // res.status(200), json({ data: fee });
-    // console.log(courseFee);
+
     res.status(200).json({
       success: true,
       data: course,
@@ -91,6 +86,7 @@ exports.addCourse = asyncHandler(async (req, res, next) => {
       free: req.body.free,
       syllabus: req.body.syllabus,
       categoryid: req.params.categoryId,
+      user: req.body.user,
     };
     const course = await Course.create(courses);
     res.status(200).json({
@@ -159,24 +155,24 @@ exports.deleteCourse = asyncHandler(async (req, res, next) => {
 exports.CoursePhotoUpload = asyncHandler(async (req, res, next) => {
   const course = await Course.findById(req.params.courseId);
 
-  if (!course) {
-    return next(
-      new ErrorResponse(
-        `Course not found with id of ${req.params.courseId}`,
-        404
-      )
-    );
-  }
+  // if (!course) {
+  //   return next(
+  //     new ErrorResponse(
+  //       `Course not found with id of ${req.params.courseId}`,
+  //       404
+  //     )
+  //   );
+  // }
 
   // Make sure user is bootcamp owner
-  if (course.user.toString() !== req.user.id && req.user.role !== "admin") {
-    return next(
-      new ErrorResponse(
-        `User ${req.params.courseId} is not authorized to update this course`,
-        401
-      )
-    );
-  }
+  // if (course.user.toString() !== req.user.id && req.user.role !== "admin") {
+  //   return next(
+  //     new ErrorResponse(
+  //       `User ${req.params.courseId} is not authorized to update this course`,
+  //       401
+  //     )
+  //   );
+  // }
 
   if (!req.files) {
     return next(new ErrorResponse(`Please upload a file`, 400));
@@ -215,4 +211,77 @@ exports.CoursePhotoUpload = asyncHandler(async (req, res, next) => {
       data: file.name,
     });
   });
+});
+
+// @desc      Upload photo for course
+// @route     PUT /api/v1/category/:categoryId/courses/:courseId/photo
+// @access    Private
+exports.CourseVideoUpload = asyncHandler(async (req, res, next) => {
+  const course = await Course.findById(req.params.courseId);
+
+  if (!course) {
+    return next(
+      new ErrorResponse(
+        `Course not found with id of ${req.params.courseId}`,
+        404
+      )
+    );
+  }
+
+  // Make sure of owner
+  if (course.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(
+        `User ${req.params.courseId} is not authorized to update this course`,
+        401
+      )
+    );
+  }
+
+  if (!req.files) {
+    return next(new ErrorResponse(`Please upload a file`, 400));
+  }
+  for (var i = 0; i < req.files.length; i++) {
+    const file = req.files[i];
+
+    // Make sure the video is a photo
+    // if (!file.mimetype.startsWith("video")) {
+    //   return next(new ErrorResponse(`Please upload an video file`, 400));
+    // }
+
+    // Check filesize
+    // if (file.size > process.env.MAX_FILE_UPLOAD) {
+    //   return next(
+    //     new ErrorResponse(
+    //       `Please upload an image less than ${process.env.MAX_FILE_UPLOAD}`,
+    //       400
+    //     )
+    //   );
+    // }
+
+    // Create custom filename
+    // file.name = `video_${course._id}${path.parse(file.name).ext}`;
+
+    // file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //     return next(new ErrorResponse(`Problem with file upload`, 500));
+    //   }
+    const syllabus = [
+      {
+        title: req.body.title,
+        description: req.body.description,
+        video: file.name,
+      },
+    ];
+    // const data = await Course.findByIdAndUpdate(req.params.courseId, {
+    //   syllabus: syllabus[i],
+    // });
+
+    res.status(200).json({
+      success: true,
+      data: file.name,
+    });
+    // });
+  }
 });
